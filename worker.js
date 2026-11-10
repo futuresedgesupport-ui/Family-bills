@@ -1,6 +1,4 @@
-// Simple password version - client-side check + KV data
-const PASSWORD = "1234";
-
+// No password - family bill sharing with history
 const HTML = `<!DOCTYPE html>
 <html lang="th">
 <head>
@@ -22,55 +20,34 @@ header h1{font-size:1.5rem;color:var(--gold)}
 .section{background:var(--card);border:1px solid var(--border);border-radius:4px;padding:16px;margin:12px 0}
 input,textarea,select{width:100%;background:#1f1c19;border:1px solid var(--border);color:var(--text);padding:10px;border-radius:2px;margin-bottom:8px;font-family:inherit}
 .btn{background:var(--accent);color:#1a1814;border:none;padding:12px;width:100%;border-radius:2px;font-weight:600}
-#login{max-width:300px;margin:60px auto;text-align:center}
-.hidden{display:none}
 </style>
 </head>
 <body>
-<div id="login">
-  <h1 style="color:var(--gold);margin-bottom:20px">ตัวช่วยจ่ายค่า</h1>
-  <input type="password" id="pw" placeholder="รหัสผ่าน">
-  <button class="btn" onclick="checkPw()">เข้าสู่ระบบ</button>
-  <p id="err" style="color:#c17a6a;margin-top:10px"></p>
-</div>
-<div id="app" class="hidden">
-  <header><h1>ตัวช่วยจ่ายค่า</h1><p style="color:var(--muted);font-size:.85rem">แชร์กันในครอบครัว</p></header>
-  <select id="monthSel" onchange="load()"></select>
-  <div id="status" style="text-align:center;color:var(--muted);font-size:.8rem;margin:8px 0"></div>
-  <div id="list"></div>
-  <div class="section">
-    <h3 style="color:var(--gold);margin-bottom:10px">เพิ่มรายการ</h3>
-    <input id="n" placeholder="ชื่อรายการ">
-    <div style="display:flex;gap:8px">
-      <input id="d" type="number" placeholder="วันที่" min="1" max="31" style="flex:1">
-      <input id="a" type="number" placeholder="จำนวนเงิน" style="flex:1">
-    </div>
-    <textarea id="note" placeholder="โน้ต"></textarea>
-    <button class="btn" onclick="add()">เพิ่มรายการ</button>
+<header><h1>ตัวช่วยจ่ายค่า</h1><p style="color:var(--muted);font-size:.85rem">แชร์กันในครอบครัว</p></header>
+<select id="monthSel" onchange="load()"></select>
+<div id="status" style="text-align:center;color:var(--muted);font-size:.8rem;margin:8px 0"></div>
+<div id="list"></div>
+<div class="section">
+  <h3 style="color:var(--gold);margin-bottom:10px">เพิ่มรายการ</h3>
+  <input id="n" placeholder="ชื่อรายการ">
+  <div style="display:flex;gap:8px">
+    <input id="d" type="number" placeholder="วันที่" min="1" max="31" style="flex:1">
+    <input id="a" type="number" placeholder="จำนวนเงิน" style="flex:1">
   </div>
+  <textarea id="note" placeholder="โน้ต"></textarea>
+  <button class="btn" onclick="add()">เพิ่มรายการ</button>
 </div>
 <script>
-const PW = "${PASSWORD}";
 const now = new Date(), cur = now.toISOString().slice(0,7);
-function checkPw(){
-  if(document.getElementById('pw').value === PW){
-    localStorage.setItem('ok','1');
-    show();
-  } else document.getElementById('err').textContent = 'รหัสผ่านไม่ถูกต้อง';
+const sel = document.getElementById('monthSel');
+let o = '';
+for(let i=0;i<12;i++){
+  const d = new Date(now.getFullYear(), now.getMonth()-i, 1);
+  const v = d.toISOString().slice(0,7);
+  o += \`<option value="\${v}" \${v===cur?'selected':''}>\${d.toLocaleDateString('th-TH',{year:'numeric',month:'long'})}</option>\`;
 }
-function show(){
-  document.getElementById('login').classList.add('hidden');
-  document.getElementById('app').classList.remove('hidden');
-  const sel = document.getElementById('monthSel');
-  let o = '';
-  for(let i=0;i<12;i++){
-    const d = new Date(now.getFullYear(), now.getMonth()-i, 1);
-    const v = d.toISOString().slice(0,7);
-    o += \`<option value="\${v}" \${v===cur?'selected':''}>\${d.toLocaleDateString('th-TH',{year:'numeric',month:'long'})}</option>\`;
-  }
-  sel.innerHTML = o;
-  load();
-}
+sel.innerHTML = o;
+
 async function load(){
   const m = document.getElementById('monthSel').value || cur;
   const r = await fetch('/api/bills');
@@ -99,7 +76,7 @@ async function add(){
   ['n','d','a','note'].forEach(id => document.getElementById(id).value='');
   load();
 }
-if(localStorage.getItem('ok')==='1') show();
+load();
 </script>
 </body>
 </html>`;
