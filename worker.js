@@ -1,4 +1,3 @@
-// No password - family bill sharing with history
 const HTML = `<!DOCTYPE html>
 <html lang="th">
 <head>
@@ -6,75 +5,62 @@ const HTML = `<!DOCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ตัวช่วยจ่ายค่า</title>
 <style>
-:root{--bg:#1a1814;--card:#2a2622;--text:#f5f0e8;--muted:#a89f91;--gold:#d4af7a;--accent:#c9a96e;--success:#6b8f71;--border:#3d3833}
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:Georgia,"Noto Serif Thai",serif;background:var(--bg);color:var(--text);padding:20px 16px;max-width:480px;margin:0 auto}
-header{text-align:center;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--border)}
-header h1{font-size:1.5rem;color:var(--gold)}
-.bill-item{background:var(--card);border:1px solid var(--border);border-radius:4px;padding:14px;display:flex;gap:12px;margin-bottom:8px}
-.bill-item.paid{opacity:.5}.bill-item.paid .name{text-decoration:line-through}
-.checkbox{width:22px;height:22px;border:1.5px solid var(--gold);border-radius:2px;flex-shrink:0}
-.bill-item.paid .checkbox{background:var(--success)}
-.bill-item.paid .checkbox::after{content:"✓";color:#fff;display:flex;align-items:center;justify-content:center;height:100%;font-size:13px}
-.name{font-size:1.05rem}.meta{color:var(--muted);font-size:.8rem;margin-top:3px}.amount{color:var(--gold)}
-.section{background:var(--card);border:1px solid var(--border);border-radius:4px;padding:16px;margin:12px 0}
-input,textarea,select{width:100%;background:#1f1c19;border:1px solid var(--border);color:var(--text);padding:10px;border-radius:2px;margin-bottom:8px;font-family:inherit}
-.btn{background:var(--accent);color:#1a1814;border:none;padding:12px;width:100%;border-radius:2px;font-weight:600}
+body{font-family:Georgia,serif;background:#1a1814;color:#f5f0e8;padding:16px;max-width:480px;margin:0 auto}
+h1{color:#d4af7a;text-align:center}
+.item{background:#2a2622;border:1px solid #3d3833;padding:12px;margin:8px 0;border-radius:4px}
+.paid{opacity:.5;text-decoration:line-through}
+input,textarea,button,select{width:100%;padding:10px;margin:6px 0;border-radius:2px;border:1px solid #3d3833;background:#1f1c19;color:#f5f0e8;font-family:inherit}
+button{background:#c9a96e;color:#1a1814;font-weight:bold;border:none}
 </style>
 </head>
 <body>
-<header><h1>ตัวช่วยจ่ายค่า</h1><p style="color:var(--muted);font-size:.85rem">แชร์กันในครอบครัว</p></header>
-<select id="monthSel" onchange="load()"></select>
-<div id="status" style="text-align:center;color:var(--muted);font-size:.8rem;margin:8px 0"></div>
+<h1>ตัวช่วยจ่ายค่า</h1>
+<select id="m" onchange="load()"></select>
 <div id="list"></div>
-<div class="section">
-  <h3 style="color:var(--gold);margin-bottom:10px">เพิ่มรายการ</h3>
-  <input id="n" placeholder="ชื่อรายการ">
-  <div style="display:flex;gap:8px">
-    <input id="d" type="number" placeholder="วันที่" min="1" max="31" style="flex:1">
-    <input id="a" type="number" placeholder="จำนวนเงิน" style="flex:1">
-  </div>
-  <textarea id="note" placeholder="โน้ต"></textarea>
-  <button class="btn" onclick="add()">เพิ่มรายการ</button>
-</div>
+<hr style="border-color:#3d3833;margin:16px 0">
+<input id="name" placeholder="ชื่อรายการ">
+<input id="day" type="number" placeholder="วันที่ (1-31)" min="1" max="31">
+<input id="amount" type="number" placeholder="จำนวนเงิน">
+<textarea id="note" placeholder="โน้ต"></textarea>
+<button onclick="add()">เพิ่มรายการ</button>
+<p id="msg" style="color:#c17a6a;text-align:center"></p>
 <script>
-const now = new Date(), cur = now.toISOString().slice(0,7);
-const sel = document.getElementById('monthSel');
-let o = '';
-for(let i=0;i<12;i++){
-  const d = new Date(now.getFullYear(), now.getMonth()-i, 1);
+const cur = new Date().toISOString().slice(0,7);
+const sel = document.getElementById('m');
+for(let i=0;i<6;i++){
+  const d = new Date(); d.setMonth(d.getMonth()-i);
   const v = d.toISOString().slice(0,7);
-  o += \`<option value="\${v}" \${v===cur?'selected':''}>\${d.toLocaleDateString('th-TH',{year:'numeric',month:'long'})}</option>\`;
+  sel.innerHTML += '<option value="'+v+'">'+d.toLocaleDateString('th-TH',{month:'long',year:'numeric'})+'</option>';
 }
-sel.innerHTML = o;
-
 async function load(){
-  const m = document.getElementById('monthSel').value || cur;
   const r = await fetch('/api/bills');
   const data = await r.json();
   const bills = data.bills || [];
-  document.getElementById('status').textContent = 'เดือน ' + m;
-  const list = document.getElementById('list');
-  if(!bills.length){ list.innerHTML = '<div style="text-align:center;color:#a89f91;padding:20px">ยังไม่มีรายการ</div>'; return; }
-  const isCur = m === cur;
-  list.innerHTML = bills.sort((a,b)=>a.day-b.day).map(b => {
+  const m = sel.value;
+  document.getElementById('list').innerHTML = bills.map(b => {
     const paid = (b.paidMonths||[]).includes(m);
-    return \`<div class="bill-item \${paid?'paid':''}" \${isCur?\`onclick="tog('\${b.id}')"\`:''}>
-      <div class="checkbox"></div>
-      <div style="flex:1"><div class="name">\${b.name}</div>
-      <div class="meta">วันที่ \${b.day} \${b.amount?'<span class="amount">'+Number(b.amount).toLocaleString()+' บาท</span>':''} \${b.note?'· '+b.note:''}</div></div>
-      \${isCur?\`<button onclick="event.stopPropagation();del('\${b.id}')" style="background:none;border:none;color:#a89f91">×</button>\`:''}
-    </div>\`;
-  }).join('');
+    return '<div class="item '+(paid?'paid':'')+'" onclick="tog(\\''+b.id+'\\')">'+
+      b.name+' (วันที่ '+b.day+') '+(b.amount?b.amount+' บาท':'')+
+      '<button onclick="event.stopPropagation();del(\\''+b.id+'\\')" style="float:right;width:auto;padding:4px 8px">×</button></div>';
+  }).join('') || '<p style="text-align:center;color:#a89f91">ยังไม่มีรายการ</p>';
 }
-async function tog(id){ await fetch('/api/toggle',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,month:cur})}); load(); }
-async function del(id){ if(confirm('ลบ?')){ await fetch('/api/delete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})}); load(); } }
 async function add(){
-  const name = document.getElementById('n').value.trim(), day = +document.getElementById('d').value;
-  if(!name || !day) return alert('กรอกชื่อและวันที่');
-  await fetch('/api/add',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,day,amount:document.getElementById('a').value,note:document.getElementById('note').value})});
-  ['n','d','a','note'].forEach(id => document.getElementById(id).value='');
+  const name = document.getElementById('name').value.trim();
+  const day = +document.getElementById('day').value;
+  if(!name || !day){ document.getElementById('msg').textContent='กรอกชื่อและวันที่'; return; }
+  await fetch('/api/add',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+    name, day, amount:document.getElementById('amount').value, note:document.getElementById('note').value
+  })});
+  document.getElementById('name').value = document.getElementById('day').value = document.getElementById('amount').value = document.getElementById('note').value = '';
+  document.getElementById('msg').textContent = '';
   load();
+}
+async function tog(id){
+  await fetch('/api/toggle',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,month:cur})});
+  load();
+}
+async function del(id){
+  if(confirm('ลบ?')){ await fetch('/api/delete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})}); load(); }
 }
 load();
 </script>
@@ -84,39 +70,47 @@ load();
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
-    if (url.pathname === '/') return new Response(HTML, {headers:{'Content-Type':'text/html;charset=UTF-8'}});
-    if (!env.BILLS) return new Response('KV not bound', {status:500});
+    if (url.pathname === '/') return new Response(HTML, {headers:{'content-type':'text/html;charset=utf-8'}});
+    if (!env.BILLS) return Response.json({error:'no kv'}, {status:500});
 
     if (url.pathname === '/api/bills') {
-      const data = await env.BILLS.get('family_bills','json') || {bills:[]};
-      data.bills = data.bills.map(b => ({paidMonths:[],...b}));
+      let data = await env.BILLS.get('family_bills', 'json');
+      if (!data) data = {bills:[]};
       return Response.json(data);
     }
     if (url.pathname === '/api/add' && request.method === 'POST') {
       const body = await request.json();
-      const data = await env.BILLS.get('family_bills','json') || {bills:[]};
-      data.bills.push({id:'id'+Date.now(), name:body.name, day:body.day, amount:body.amount||'', note:body.note||'', paidMonths:[]});
+      let data = await env.BILLS.get('family_bills', 'json') || {bills:[]};
+      data.bills.push({
+        id: 'b' + Date.now(),
+        name: body.name || '',
+        day: Number(body.day) || 1,
+        amount: body.amount || '',
+        note: body.note || '',
+        paidMonths: []
+      });
       await env.BILLS.put('family_bills', JSON.stringify(data));
       return Response.json({ok:true});
     }
     if (url.pathname === '/api/toggle' && request.method === 'POST') {
       const {id, month} = await request.json();
-      const data = await env.BILLS.get('family_bills','json') || {bills:[]};
+      let data = await env.BILLS.get('family_bills', 'json') || {bills:[]};
       const b = data.bills.find(x => x.id === id);
       if (b) {
-        b.paidMonths = b.paidMonths || [];
-        b.paidMonths = b.paidMonths.includes(month) ? b.paidMonths.filter(m=>m!==month) : [...b.paidMonths, month];
+        if (!b.paidMonths) b.paidMonths = [];
+        if (b.paidMonths.includes(month)) b.paidMonths = b.paidMonths.filter(x => x !== month);
+        else b.paidMonths.push(month);
       }
       await env.BILLS.put('family_bills', JSON.stringify(data));
       return Response.json({ok:true});
     }
     if (url.pathname === '/api/delete' && request.method === 'POST') {
       const {id} = await request.json();
-      const data = await env.BILLS.get('family_bills','json') || {bills:[]};
+      let data = await env.BILLS.get('family_bills', 'json') || {bills:[]};
       data.bills = data.bills.filter(x => x.id !== id);
       await env.BILLS.put('family_bills', JSON.stringify(data));
       return Response.json({ok:true});
     }
-    return new Response('Not found', {status:404});
+    return new Response('not found', {status:404});
   }
 };
